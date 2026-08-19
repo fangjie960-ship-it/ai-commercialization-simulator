@@ -4,6 +4,7 @@ import path from 'path'
 import type { ServerResponse } from 'node:http'
 import { onRequestPost as recommendOnRequest } from './functions/api/recommend'
 import { onRequestPost as recommendSchemeOnRequest } from './functions/api/recommend-scheme'
+import { onRequestGet as healthOnRequest } from './functions/api/health'
 
 /**
  * 本地开发中间件：让 `npm run dev` 也能访问 /api/recommend 和 /api/recommend-scheme
@@ -17,6 +18,7 @@ function apiDevMiddleware(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         const url = (req.url || '').split('?')[0]
         const routeHandlers: Record<string, (request: Request) => Promise<Response>> = {
+          '/api/health': (request) => healthOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY, AI_API_KEY: process.env.AI_API_KEY, AI_BASE_URL: process.env.AI_BASE_URL, AI_MODEL: process.env.AI_MODEL } }),
           '/api/recommend': (request) =>
             recommendOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY, AI_API_KEY: process.env.AI_API_KEY, AI_BASE_URL: process.env.AI_BASE_URL, AI_MODEL: process.env.AI_MODEL } }),
           '/api/recommend-scheme': (request) =>
@@ -25,8 +27,8 @@ function apiDevMiddleware(): Plugin {
         const routeHandler = routeHandlers[url]
         if (!routeHandler) return next()
 
-        // Cloudflare Pages 的 onRequestPost 只处理 POST，其它方法返回 405
-        if (req.method !== 'POST') {
+        // /api/health 允许 GET，其余只允许 POST
+        if (req.method !== 'POST' && url !== '/api/health') {
           res.statusCode = 405
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ error: 'Method not allowed' }))
