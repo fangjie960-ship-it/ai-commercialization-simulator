@@ -8,7 +8,7 @@ import { SCHEME_ADVICE_SYSTEM_PROMPT, buildShortTermAdvicePrompt, buildWaiverAdv
 
 interface FunctionContext {
   request: Request;
-  env: { DEEPSEEK_API_KEY?: string };
+  env: { DEEPSEEK_API_KEY?: string; AI_API_KEY?: string; AI_BASE_URL?: string; AI_MODEL?: string };
 }
 
 interface SchemeAdviceRequest {
@@ -72,12 +72,15 @@ function validateAndNormalize(raw: unknown, scheme: string): SchemeAdviceRespons
 }
 
 export async function onRequestPost({ request, env }: FunctionContext): Promise<Response> {
-  const apiKey = env.DEEPSEEK_API_KEY;
+  const apiKey = env.DEEPSEEK_API_KEY || env.AI_API_KEY;
   if (!apiKey) {
     return Response.json({ error: 'API Key not configured' }, { status: 500 });
   }
 
   try {
+    const baseUrl = (env.AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+    const model = env.AI_MODEL || 'deepseek-chat';
+
     let data: SchemeAdviceRequest;
     try {
       data = (await request.json()) as SchemeAdviceRequest;
@@ -93,14 +96,14 @@ export async function onRequestPost({ request, env }: FunctionContext): Promise<
       ? buildWaiverAdvicePrompt(data.summary)
       : buildShortTermAdvicePrompt(data.summary);
 
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model,
         messages: [
           { role: 'system', content: SCHEME_ADVICE_SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },

@@ -18,7 +18,7 @@ function apiDevMiddleware(): Plugin {
         const url = (req.url || '').split('?')[0]
         const routeHandlers: Record<string, (request: Request) => Promise<Response>> = {
           '/api/recommend': (request) =>
-            recommendOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY } }),
+            recommendOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY, AI_API_KEY: process.env.AI_API_KEY, AI_BASE_URL: process.env.AI_BASE_URL, AI_MODEL: process.env.AI_MODEL } }),
           '/api/recommend-scheme': (request) =>
             recommendSchemeOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY } }),
         }

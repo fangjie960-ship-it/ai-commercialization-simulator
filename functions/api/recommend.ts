@@ -11,7 +11,7 @@ import type { Customer, CustomerAnalysis, ContractScale, StrategyType, TrendDire
 /** Pages Function 上下文（最小类型，避免额外依赖） */
 interface FunctionContext {
   request: Request;
-  env: { DEEPSEEK_API_KEY?: string };
+  env: { DEEPSEEK_API_KEY?: string; AI_API_KEY?: string; AI_BASE_URL?: string; AI_MODEL?: string };
 }
 
 interface RecommendRequest {
@@ -126,12 +126,15 @@ function validateRecommendation(raw: unknown): RecommendResponse | null {
 }
 
 export async function onRequestPost({ request, env }: FunctionContext): Promise<Response> {
-  const apiKey = env.DEEPSEEK_API_KEY;
+  const apiKey = env.DEEPSEEK_API_KEY || env.AI_API_KEY;
   if (!apiKey) {
     return Response.json({ error: 'API Key not configured' }, { status: 500 });
   }
 
   try {
+    const baseUrl = (env.AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+    const model = env.AI_MODEL || 'deepseek-chat';
+
     let data: RecommendRequest;
     try {
       data = (await request.json()) as RecommendRequest;
@@ -154,14 +157,14 @@ export async function onRequestPost({ request, env }: FunctionContext): Promise<
 
     const userPrompt = buildSanitizedPrompt(data);
 
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model,
         messages: [
           { role: 'system', content: STRATEGY_SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },

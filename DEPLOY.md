@@ -10,12 +10,12 @@
 | GitHub 仓库名（建议同名） | `ai-commercialization-simulator` |
 | Cloudflare Pages 项目名（建议同名） | `ai-commercialization-simulator` |
 | 部署后域名 | `https://ai-commercialization-simulator.pages.dev` |
-| 环境变量（必须一致） | `DEEPSEEK_API_KEY` |
+| 环境变量（Key 名二选一） | `DEEPSEEK_API_KEY` 或 `AI_API_KEY`（推荐 `AI_API_KEY`） |
 | API 路由 | `/api/recommend`、`/api/recommend-scheme` |
 | 本地启动 | `npm run dev`（默认 5173 端口） |
 
-> 说明：`DEEPSEEK_API_KEY` 是代码里读取的名称（`functions/api/*.ts` 中 `context.env.DEEPSEEK_API_KEY`），
-> 前端不碰 Key；本地开发时它来自 `.env.local`（已 gitignore，不会推送到 GitHub）。
+> 说明：代码优先读 `DEEPSEEK_API_KEY`，也兼容 `AI_API_KEY`；可选 `AI_BASE_URL`（默认 https://api.deepseek.com/v1）与 `AI_MODEL`（默认 deepseek-chat）。
+> 前端不碰 Key；本地开发时 Key 来自 `.env.local`（已 gitignore，不会推送到 GitHub）。
 
 ## 二、第一步：把本地代码推到 GitHub
 
@@ -48,7 +48,11 @@ git push -u origin master
 4. **环境变量**：在项目设置 → **Variables** 里添加：
 
 ```
-DEEPSEEK_API_KEY = 你本地 .env.local 里的那串值
+AI_API_KEY = 你本地 .env.local 里的那串值
+
+可选：
+AI_BASE_URL = https://api.deepseek.com/v1
+AI_MODEL = deepseek-chat（按你实际用的模型填）
 ```
 
 5. 点 **Save and Deploy**，等一两分钟完成。
