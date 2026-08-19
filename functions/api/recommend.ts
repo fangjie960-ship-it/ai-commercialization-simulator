@@ -192,14 +192,16 @@ export async function onRequestPost({ request, env }: FunctionContext): Promise<
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(content);
+      // 防御：有些模型会包一层 ```json 代码块，先剥离再解析
+      const cleaned = content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+      parsed = JSON.parse(cleaned);
     } catch {
-      return Response.json({ error: 'AI 响应格式不正确，请重试' }, { status: 502 });
+      return Response.json({ error: 'AI 响应格式不正确（JSON解析失败）：' + content.slice(0, 300) }, { status: 502 });
     }
 
     const recommendation = validateRecommendation(parsed);
     if (!recommendation) {
-      return Response.json({ error: 'AI 响应格式不正确，请重试' }, { status: 502 });
+      return Response.json({ error: 'AI 响应格式不正确（字段校验未通过）：' + content.slice(0, 300) }, { status: 502 });
     }
 
     return Response.json(recommendation, { status: 200 });
