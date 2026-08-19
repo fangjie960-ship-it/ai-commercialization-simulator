@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Search, Upload, Plus, ChevronLeft, ChevronRight, Target, Edit2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
 import { TierBadge } from '@/components/TierBadge'
 import { ImportModal } from '@/components/ImportModal'
@@ -56,6 +57,7 @@ export function CustomerList() {
     // 先清空旧数据，确保加载最新生成的演示数据
     await clearAllCustomersFromDB()
     importCustomers(demoCustomers)
+    toast.success('演示数据已加载')
   }
 
   const openDetail = (customerId: string) => {
@@ -262,7 +264,7 @@ export function CustomerList() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => deleteCustomer(customer.id)}
+                            onClick={() => { deleteCustomer(customer.id); toast.success(`已删除 ${customer.name}`) }}
                             className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                             title="删除"
                           >

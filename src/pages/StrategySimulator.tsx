@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Target, CheckCircle2, Users, Loader2, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
 import { SHORT_TERM_CONFIG, type ShortTermTierConfig } from '@/config/schemeConfig'
 import { calcWaiverScheme, calcShortTermScheme, type WaiverResult, type ShortTermResult } from '@/utils/scheme'
@@ -286,6 +287,7 @@ export function StrategySimulator() {
       await applyPolicy(p)
     }
     setExecutedCount(newPolicies.length)
+    toast.success(`已为 ${newPolicies.length} 个客户执行政策，可在客户列表/详情查看进度`)
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { X, ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, TrendingUp } from 'lucide-react'
 import Papa from 'papaparse'
+import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
 import { parseCSV, downloadCSVTemplate, type ParseError } from '@/utils/csvParser'
 import {
@@ -68,6 +69,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
     if (result.customers.length > 0) {
       await importCustomers(result.customers)
       setImportSummary(`成功导入 ${result.successCount} 条，失败 ${result.errors.length} 条（按营业执照 upsert）`)
+      toast.success(`客户主数据导入完成：成功 ${result.successCount} 条，失败 ${result.errors.length} 条`)
     } else {
       setImportSummary(`没有可导入的数据，失败 ${result.errors.length} 条`)
     }
@@ -108,6 +110,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
       const matchedRows = spendPreview.aggregatedRows.filter(r => knownLicenses.has(r.license))
       const res = await importDailySpend(matchedRows, overwrite)
       setDone({ importedCustomers: res.importedCustomers, importedDays: res.importedDays })
+      toast.success(`消耗流水导入完成：更新 ${res.importedCustomers} 个客户 / ${res.importedDays} 天`)
       setSpendStep('done')
     } finally {
       setImporting(false)

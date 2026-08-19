@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X, UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
 import type { Industry } from '@/types/customer'
 
@@ -110,6 +111,7 @@ export function CustomerFormModal({ open, onClose }: CustomerFormModalProps) {
         remark: form.remark.trim() || undefined,
       })
       setForm(EMPTY_FORM)
+      toast.success('客户已新增')
       setErrors([])
       onClose()
     } finally {
