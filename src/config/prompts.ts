@@ -57,7 +57,7 @@ export const STRATEGY_SYSTEM_PROMPT = `你是资深的商业化策略专家，�
 
 ## 输出格式（严格 JSON）
 {
-  "strategies": ["strategy_type"],
+  "strategies": ["waiver"],  // 必须用英文枚举：waiver / short_term / tiered / exclusive / combined，禁止中文名
   "reasons": ["推荐理由"],
   "expectedIncrease": 80,
   "expectedCompletionBoost": 15.5,
@@ -73,7 +73,7 @@ export const STRATEGY_SYSTEM_PROMPT = `你是资深的商业化策略专家，�
 }
 
 ## 重要约束
-1. 必须按 JSON 格式输出
+1. 必须按 JSON 格式输出，strategies 用英文枚举（waiver/short_term/tiered/exclusive/combined），不要用中文策略名
 2. confidence 必须在 0-1 之间
 3. incentiveRate 必须在策略类型的范围内
 4. ROI = expectedIncrease / incentiveCost，应 ≥ roiThreshold

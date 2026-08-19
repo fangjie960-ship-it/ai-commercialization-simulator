@@ -38,6 +38,20 @@ interface RecommendResponse {
 const VALID_STRATEGY_TYPES: StrategyType[] = ['waiver', 'short_term', 'tiered', 'exclusive', 'combined'];
 const VALID_INCENTIVE_LEVELS: readonly string[] = ['low', 'medium', 'high'];
 
+/** 策略名中英文映射：LLM 可能返回中文名，统一规范化为英文枚举 */
+const STRATEGY_NAME_MAP: Record<string, StrategyType> = {
+  waiver: 'waiver',
+  short_term: 'short_term',
+  tiered: 'tiered',
+  exclusive: 'exclusive',
+  combined: 'combined',
+  免扣保证金: 'waiver',
+  短期激励: 'short_term',
+  阶梯激励: 'tiered',
+  专属服务: 'exclusive',
+  组合策略: 'combined',
+};
+
 /**
  * 构建脱敏后的 User Prompt
  * 脱敏规则（AGENTS.md §3.3）：
@@ -87,7 +101,9 @@ function validateRecommendation(raw: unknown): RecommendResponse | null {
 
   const { strategies, reasons } = data;
   if (!Array.isArray(strategies) || strategies.length < 1 || strategies.length > 3) return null;
-  if (!strategies.every((s) => VALID_STRATEGY_TYPES.includes(s as StrategyType))) return null;
+  // 中文名 → 英文枚举；含无法识别的名称则拒绝
+  const normalizedStrategies = strategies.map((st) => STRATEGY_NAME_MAP[String(st).trim()]);
+  if (normalizedStrategies.some((st) => !st || !VALID_STRATEGY_TYPES.includes(st))) return null;
   if (!Array.isArray(reasons) || reasons.some((r) => typeof r !== 'string')) return null;
 
   const expectedIncrease = Number(data.expectedIncrease);
@@ -109,7 +125,7 @@ function validateRecommendation(raw: unknown): RecommendResponse | null {
   if (!Number.isFinite(incentiveRate) || !Number.isFinite(duration) || !Number.isFinite(roiThreshold)) return null;
 
   return {
-    strategies: strategies as StrategyType[],
+    strategies: normalizedStrategies as StrategyType[],
     reasons: reasons as string[],
     expectedIncrease,
     expectedCompletionBoost,
