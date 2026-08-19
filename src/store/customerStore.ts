@@ -4,6 +4,7 @@ import type { Customer, CustomerAnalysis, Policy, StrategyRecommendation, Filter
 import { analyzeAllCustomers, analyzeCustomer, setCalculationConfig } from '@/utils/classification'
 import { saveCustomersToDB, getAllCustomersFromDB, deleteCustomerFromDB, saveRecommendationToDB, savePoliciesToDB, getAllPoliciesFromDB } from '@/utils/indexedDB'
 import type { AggregatedSpendRow } from '@/utils/spendParser'
+import type { BackupData } from '@/utils/backup'
 
 interface CustomerState {
   customers: Customer[]
@@ -29,6 +30,7 @@ interface CustomerState {
   resetFilter: () => void
   setPage: (page: 'dashboard' | 'customers' | 'strategy' | 'daily_trend' | 'customer_detail' | 'policy_review') => void
   applyPolicy: (policy: Policy) => Promise<void>
+  restoreBackup: (data: BackupData) => Promise<void>
   setSelectedCustomer: (id: string | null) => void
   loadCustomers: () => Promise<void>
   saveRecommendation: (recommendation: StrategyRecommendation) => Promise<void>
@@ -336,6 +338,24 @@ export const useCustomerStore = create<CustomerState>()(
           }
         }))
         await savePoliciesToDB([policy])
+      },
+      // 从备份恢复：整体覆盖客户/政策/计算配置，并重新计算分析
+      restoreBackup: async (data) => {
+        const { customers: backupCustomers, policies: backupPolicies, calculationConfig: backupConfig, filter: backupFilter } = data
+        const customers = backupCustomers || []
+        const policies = backupPolicies || []
+        const analyses = analyzeAllCustomers(customers)
+        const config = backupConfig || get().calculationConfig
+        setCalculationConfig(config.industryConfigs)
+        set({
+          customers,
+          policies: Object.fromEntries(policies.map(p => [p.customerId, p])),
+          analyses,
+          calculationConfig: config,
+          filter: backupFilter || get().filter,
+        })
+        await saveCustomersToDB(customers)
+        await savePoliciesToDB(policies)
       },
       
       getFilteredCustomers: () => {

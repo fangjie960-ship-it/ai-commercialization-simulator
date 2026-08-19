@@ -2,13 +2,12 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import type { ServerResponse } from 'node:http'
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import recommendHandler from './api/recommend'
-import recommendSchemeHandler from './api/recommend-scheme'
+import { onRequestPost as recommendOnRequest } from './functions/api/recommend'
+import { onRequestPost as recommendSchemeOnRequest } from './functions/api/recommend-scheme'
 
 /**
- * 本地开发中间件：让 `npm run dev` 也能访问 /api/recommend
- * 生产环境由 Vercel 直接运行 api/ 目录下的 Serverless Function，此插件不生效
+ * 本地开发中间件：让 `npm run dev` 也能访问 /api/recommend 和 /api/recommend-scheme
+ * 生产环境由 Cloudflare Pages 直接运行 functions/ 目录下的 Pages Function，此插件不生效
  * （vite.config.ts 的静态 import 会被 esbuild 打包进配置文件，因此可复用 handler）
  */
 function apiDevMiddleware(): Plugin {
@@ -17,13 +16,16 @@ function apiDevMiddleware(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = (req.url || '').split('?')[0]
-        const handler: { [path: string]: (req: VercelRequest, res: VercelResponse) => Promise<void> } = {
-          '/api/recommend': recommendHandler,
-          '/api/recommend-scheme': recommendSchemeHandler,
+        const routeHandlers: Record<string, (request: Request) => Promise<Response>> = {
+          '/api/recommend': (request) =>
+            recommendOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY } }),
+          '/api/recommend-scheme': (request) =>
+            recommendSchemeOnRequest({ request, env: { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY } }),
         }
-        const routeHandler = handler[url]
+        const routeHandler = routeHandlers[url]
         if (!routeHandler) return next()
 
+        // Cloudflare Pages 的 onRequestPost 只处理 POST，其它方法返回 405
         if (req.method !== 'POST') {
           res.statusCode = 405
           res.setHeader('Content-Type', 'application/json')
@@ -31,22 +33,27 @@ function apiDevMiddleware(): Plugin {
           return
         }
 
-        // 读取并解析请求体
+        // 读取请求体
         const chunks: Buffer[] = []
         for await (const chunk of req) chunks.push(chunk as Buffer)
         const raw = Buffer.concat(chunks).toString('utf8')
-        let body: unknown = {}
-        try {
-          body = raw ? JSON.parse(raw) : {}
-        } catch {
-          body = {}
-        }
 
-        const vercelReq = req as VercelRequest
-        vercelReq.body = body
+        // 组装成 Web Request（Cloudflare Pages Function 的入参形态）
+        const headers = new Headers()
+        Object.entries(req.headers).forEach(([key, value]) => {
+          if (typeof value === 'string') headers.set(key, value)
+        })
+        const request = new Request(`http://localhost${req.url || '/'}`, {
+          method: req.method,
+          headers,
+          body: raw ? raw : undefined,
+        })
 
         try {
-          await routeHandler(vercelReq, toVercelResponse(res))
+          const response = await routeHandler(request)
+          res.statusCode = response.status
+          response.headers.forEach((value, key) => res.setHeader(key, value))
+          res.end(await response.text())
         } catch (err) {
           console.error('api dev handler error:', err)
           if (!res.writableEnded) {
@@ -60,25 +67,8 @@ function apiDevMiddleware(): Plugin {
   }
 }
 
-/**
- * 给 Node 原生 ServerResponse 补充 VercelResponse 的 status/json 方法
- */
-function toVercelResponse(res: ServerResponse): VercelResponse {
-  const wrapped = res as VercelResponse
-  wrapped.status = (code: number) => {
-    res.statusCode = code
-    return wrapped
-  }
-  wrapped.json = (body: unknown) => {
-    res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify(body))
-    return wrapped
-  }
-  return wrapped
-}
-
 export default defineConfig(({ mode }) => {
-  // 加载 .env / .env.local，让 dev 中间件里的 /api/recommend 能读到 DEEPSEEK_API_KEY
+  // 加载 .env / .env.local，让 dev 中间件里的接口能读到 DEEPSEEK_API_KEY
   const env = loadEnv(mode, process.cwd(), '')
   if (!process.env.DEEPSEEK_API_KEY && env.DEEPSEEK_API_KEY) {
     process.env.DEEPSEEK_API_KEY = env.DEEPSEEK_API_KEY

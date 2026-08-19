@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Search, Upload, Plus, ChevronLeft, ChevronRight, Target, Edit2, Trash2 } from 'lucide-react'
+import { Search, Upload, Plus, Download, ChevronLeft, ChevronRight, Target, Edit2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
 import { TierBadge } from '@/components/TierBadge'
 import { ImportModal } from '@/components/ImportModal'
+import { downloadBackup, parseBackup } from '@/utils/backup'
 import { CustomerFormModal } from '@/components/CustomerFormModal'
 import { clearAllCustomersFromDB } from '@/utils/indexedDB'
 import { demoCustomers } from '@/data/demoCustomers'
@@ -36,7 +37,10 @@ export function CustomerList() {
     deleteCustomer,
     setPage,
     setSelectedCustomer,
-    getFilteredCustomers
+    getFilteredCustomers,
+    policies,
+    calculationConfig,
+    restoreBackup
   } = useCustomerStore()
 
   const [showImportModal, setShowImportModal] = useState(false)
@@ -58,6 +62,37 @@ export function CustomerList() {
     await clearAllCustomersFromDB()
     importCustomers(demoCustomers)
     toast.success('演示数据已加载')
+  }
+
+  const handleBackup = () => {
+    if (customers.length === 0 && Object.keys(policies).length === 0) {
+      toast.error('当前没有可备份的数据')
+      return
+    }
+    downloadBackup({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      customers,
+      policies: Object.values(policies),
+      calculationConfig,
+      filter,
+    })
+    toast.success('数据已备份为 JSON 文件')
+  }
+
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const text = await file.text()
+      const data = parseBackup(text)
+      if (!window.confirm('恢复将覆盖当前数据（客户/政策/配置），确定继续？')) return
+      await restoreBackup(data)
+      toast.success('数据已恢复：' + data.customers.length + ' 个客户 / ' + data.policies.length + ' 条政策')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '恢复失败，请检查备份文件')
+    }
   }
 
   const openDetail = (customerId: string) => {
@@ -107,6 +142,18 @@ export function CustomerList() {
 
         {/* 操作按钮 */}
         <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors cursor-pointer">
+            <Upload className="w-4 h-4" />
+            <span className="text-sm">恢复数据</span>
+            <input type="file" accept=".json" className="hidden" onChange={handleRestore} />
+          </label>
+          <button
+            onClick={handleBackup}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span className="text-sm">备份数据</span>
+          </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg transition-colors"
