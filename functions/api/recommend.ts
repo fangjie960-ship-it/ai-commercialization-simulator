@@ -178,7 +178,8 @@ export async function onRequestPost({ request, env }: FunctionContext): Promise<
     if (!response.ok) {
       const error = await response.text();
       console.error('DeepSeek API error:', error);
-      return Response.json({ error: 'AI 服务暂时不可用，请稍后重试' }, { status: 502 });
+      // 把 DeepSeek 的真实错误透传给前端，便于排查（如 Key 无效/模型不存在）
+      return Response.json({ error: 'AI 服务调用失败：' + (error || '未知错误').slice(0, 300) }, { status: 502 });
     }
 
     const result = await response.json();
