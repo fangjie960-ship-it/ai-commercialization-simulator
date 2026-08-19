@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Upload, Plus, Download, ChevronLeft, ChevronRight, Target, Edit2, Trash2 } from 'lucide-react'
+import { Search, Upload, Plus, Download, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
 import { TierBadge } from '@/components/TierBadge'
@@ -8,7 +8,7 @@ import { downloadBackup, parseBackup } from '@/utils/backup'
 import { CustomerFormModal } from '@/components/CustomerFormModal'
 import { clearAllCustomersFromDB } from '@/utils/indexedDB'
 import { demoCustomers } from '@/data/demoCustomers'
-import type { Industry, EstimatedAction } from '@/types/customer'
+import type { Customer, Industry, EstimatedAction } from '@/types/customer'
 
 const industries: { value: Industry | 'all'; label: string }[] = [
   { value: 'all', label: '全部行业' },
@@ -45,6 +45,7 @@ export function CustomerList() {
 
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
@@ -162,7 +163,7 @@ export function CustomerList() {
             <span className="text-sm">批量导入</span>
           </button>
           <button
-            onClick={() => setShowFormModal(true)}
+            onClick={() => { setEditingCustomer(null); setShowFormModal(true) }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -298,20 +299,14 @@ export function CustomerList() {
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => openDetail(customer.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-500/10 rounded-lg transition-colors"
-                            title="查看详情"
-                          >
-                            <Target className="w-4 h-4" />
-                          </button>
-                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingCustomer(customer); setShowFormModal(true) }}
                             className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors"
                             title="编辑"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => { deleteCustomer(customer.id); toast.success(`已删除 ${customer.name}`) }}
+                            onClick={(e) => { e.stopPropagation(); deleteCustomer(customer.id); toast.success(`已删除 ${customer.name}`) }}
                             className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                             title="删除"
                           >
@@ -356,7 +351,7 @@ export function CustomerList() {
 
       {/* 导入中心弹窗 */}
       <ImportModal open={showImportModal} onClose={() => setShowImportModal(false)} />
-      <CustomerFormModal open={showFormModal} onClose={() => setShowFormModal(false)} />
+      <CustomerFormModal open={showFormModal} customer={editingCustomer} onClose={() => setShowFormModal(false)} />
     </div>
   )
 }

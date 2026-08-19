@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { X, UserPlus } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, UserPlus, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customerStore'
-import type { Industry } from '@/types/customer'
+import type { Customer, Industry } from '@/types/customer'
 
 interface CustomerFormModalProps {
   open: boolean
+  customer?: Customer | null // 传入则进入编辑模式
   onClose: () => void
 }
 
@@ -43,15 +44,38 @@ const EMPTY_FORM: FormState = {
   remark: '',
 }
 
+/** 从客户对象预填表单（编辑模式） */
+function toForm(c: Customer): FormState {
+  return {
+    name: c.name,
+    businessLicense: c.businessLicense,
+    industry: c.industry,
+    contractAmount: String(c.contractAmount),
+    completedAmount: String(c.completedAmount),
+    monthlyTrend: c.monthlyTrend.length === 6 ? c.monthlyTrend.map(String) : ['', '', '', '', '', ''],
+    contractDate: c.contractDate,
+    expireDate: c.expireDate,
+    grade: c.grade || '',
+    remark: c.remark || '',
+  }
+}
+
 /**
- * 手动录入客户表单
- * 补充 PRD P0 的"手动录入"入口，字段与 CSV 模板保持一致
+ * 客户录入/编辑表单
+ * 新增与编辑共用：传入 customer 即为编辑模式
  */
-export function CustomerFormModal({ open, onClose }: CustomerFormModalProps) {
-  const { addCustomer, customers } = useCustomerStore()
+export function CustomerFormModal({ open, customer, onClose }: CustomerFormModalProps) {
+  const { addCustomer, updateCustomer, customers } = useCustomerStore()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [errors, setErrors] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+
+  // 打开时按模式预填：编辑=客户数据，新增=空表单
+  useEffect(() => {
+    if (!open) return
+    setForm(customer ? toForm(customer) : EMPTY_FORM)
+    setErrors([])
+  }, [open, customer])
 
   if (!open) return null
 
@@ -64,7 +88,8 @@ export function CustomerFormModal({ open, onClose }: CustomerFormModalProps) {
 
     if (!form.name.trim()) errs.push('客户名称不能为空')
     if (!form.businessLicense.trim()) errs.push('营业执照不能为空')
-    if (customers.some(c => c.businessLicense === form.businessLicense.trim())) {
+    // 编辑时排除自身，允许保留原执照
+    if (customers.some(c => c.businessLicense === form.businessLicense.trim() && c.id !== customer?.id)) {
       errs.push(`营业执照 ${form.businessLicense.trim()} 已存在，请勿重复录入`)
     }
 
@@ -97,21 +122,25 @@ export function CustomerFormModal({ open, onClose }: CustomerFormModalProps) {
 
     setSaving(true)
     try {
-      await addCustomer({
+      const payload = {
         name: form.name.trim(),
         businessLicense: form.businessLicense.trim(),
         industry: form.industry,
         contractAmount: parseFloat(form.contractAmount),
         completedAmount: parseFloat(form.completedAmount),
         monthlyTrend: form.monthlyTrend.map(v => parseFloat(v)),
-        dailySpend: [],
         contractDate: form.contractDate,
         expireDate: form.expireDate,
         grade: (form.grade || undefined) as 'A' | 'B' | 'C' | 'D' | undefined,
         remark: form.remark.trim() || undefined,
-      })
-      setForm(EMPTY_FORM)
-      toast.success('客户已新增')
+      }
+      if (customer) {
+        await updateCustomer(customer.id, payload)
+        toast.success('客户已更新')
+      } else {
+        await addCustomer({ ...payload, dailySpend: [] })
+        toast.success('客户已新增')
+      }
       setErrors([])
       onClose()
     } finally {
@@ -124,8 +153,8 @@ export function CustomerFormModal({ open, onClose }: CustomerFormModalProps) {
       <div className="bg-white rounded-xl w-[640px] max-h-[90vh] overflow-auto border border-gray-200">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-blue-600" />
-            新增客户
+            {customer ? <Pencil className="w-5 h-5 text-blue-600" /> : <UserPlus className="w-5 h-5 text-blue-600" />}
+            {customer ? '编辑客户' : '新增客户'}
           </h3>
           <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
             <X className="w-5 h-5" />

@@ -34,7 +34,7 @@ export function Sidebar() {
   return (
     <aside className="w-56 bg-white border-r border-gray-200 flex flex-col h-screen shrink-0">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="h-16 px-6 flex items-center border-b border-gray-200">
         <h1 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <Target className="w-5 h-5 text-blue-500" />
           <span>AI策略模拟器</span>
