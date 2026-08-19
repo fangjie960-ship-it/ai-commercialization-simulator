@@ -184,7 +184,9 @@ export async function onRequestPost({ request, env }: FunctionContext): Promise<
     const result = await response.json();
     const content = result.choices?.[0]?.message?.content;
     if (!content) {
-      return Response.json({ error: 'AI 响应为空，请重试' }, { status: 502 });
+      const raw = JSON.stringify(result)?.slice(0, 300) || '';
+      console.error('AI 响应内容为空，模型:', model, '原始返回:', raw);
+      return Response.json({ error: 'AI 响应为空，请重试（模型 ' + model + '）' }, { status: 502 });
     }
 
     let parsed: unknown;
