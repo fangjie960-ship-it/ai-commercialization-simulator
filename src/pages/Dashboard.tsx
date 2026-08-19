@@ -200,7 +200,10 @@ export function Dashboard() {
                     name="客户" 
                     data={bubbleData} 
                     fill="#3b82f6"
-                    onClick={(data) => handleCustomerClick((data as any).customerId)}
+                    onClick={(data) => {
+                      const id = (data as { customerId?: string }).customerId
+                      if (id) handleCustomerClick(id)
+                    }}
                   >
                     {bubbleData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[entry!.tier as CustomerTier]} />

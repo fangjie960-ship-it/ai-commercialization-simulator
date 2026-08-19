@@ -65,12 +65,12 @@ const INDUSTRY_MAP: Record<string, Industry> = {
 /**
  * 解析 CSV 文件
  */
-export function parseCSV(file: File): Promise<ParseResult> {
+export function parseCSV(input: File | string): Promise<ParseResult> {
   return new Promise((resolve) => {
     const errors: ParseError[] = []
     const customers: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>[] = []
 
-    Papa.parse<CSVRow>(file, {
+    Papa.parse<CSVRow>(input, {
       header: true,
       skipEmptyLines: true,
       encoding: 'UTF-8',

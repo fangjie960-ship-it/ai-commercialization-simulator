@@ -426,10 +426,11 @@ export const useCustomerStore = create<CustomerState>()(
     {
       name: 'customer-store',
       version: 2,
-      migrate: (persistedState: any) => {
+      migrate: (persistedState: unknown) => {
+        const state = (persistedState || {}) as Record<string, unknown>
         // 强制重置 filter 以修复 completionRateMax 问题
         return {
-          ...persistedState,
+          ...state,
           filter: {
             industry: 'all',
             estimatedAction: 'all',

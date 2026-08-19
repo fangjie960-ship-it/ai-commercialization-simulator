@@ -157,7 +157,7 @@ export function DailyTrend() {
   }, [dailyData, selectionRange])
 
   // 点击图表处理（确保起始日期 < 结束日期）
-  const handleChartClick = (e: any) => {
+  const handleChartClick = (e: { activeLabel?: string }) => {
     if (e && e.activeLabel) {
       const clickedDate = e.activeLabel
 
